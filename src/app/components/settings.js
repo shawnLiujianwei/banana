@@ -20,6 +20,12 @@ function (_) {
       banana_queryPipeline: "system_banana-default",
       banana_indexPipeline: "system_banana-default",
 
+      // Specify the number of requests to retry (when encounter 401 error) before redirecting to a login page,
+      // and the number of milliseconds between retries.
+      enable_retries: false,
+      max_retries: 10,
+      wait_between_retries: 1000,
+
       // Lucidworks Fusion settings
       USE_FUSION: true,  
       apollo: "/api/apollo",
