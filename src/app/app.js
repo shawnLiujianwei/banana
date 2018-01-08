@@ -6,6 +6,7 @@ define([
   'jquery',
   'underscore',
   'require',
+  'config',
 
   'elasticjs',
   'solrjs',
@@ -15,7 +16,7 @@ define([
   'angular-dragdrop',
   'extend-jquery'
 ],
-function (angular, $, _, appLevelRequire) {
+function (angular, $, _, appLevelRequire, config) {
   "use strict";
 
   var app = angular.module('kibana', []),
@@ -89,32 +90,62 @@ function (angular, $, _, appLevelRequire) {
     $httpProvider.defaults.useXDomain = true;
     delete $httpProvider.defaults.headers.common["X-Requested-With"];
     // If the backend (apollo) gives us a 401, redirect to the login page.
-    $httpProvider.responseInterceptors.push(function() {
-        return function(p){
-          return p.then(
-            angular.identity,
-            function(err){
-              if( err.status === 401 ){
-                // Send in the current location for a post login redirect
-                // -- the "return" param.
-                // Do this as a relative path change since we don't know what
-                // the base/root path will be, we do know banana will always be
-                // served by the proxy at $root/banana/ - login is 1 level up.
-                var query = window.location.search,
-                    hash = window.location.hash,
-                    goto = '../login?return=' + window.location.pathname;
-                goto += (hash ? hash : "");
-                goto += (query ? "?" + encodeURIComponent(query) : "");
-                goto = goto.replace(/#/g, '%23');  
-                window.location = goto;
-                return;
-              } else if (err.status === 404) {
-                  console.log('http 404 encounter!');
-              }
+    $httpProvider.responseInterceptors.push(function($q, $injector) {
+      var retries = 0;
+      var maxRetries = config.max_retries || 10;
+      var waitBetweenRetries = config.wait_between_retries || 1000;
+      var deferred = $q.defer();
+
+      function retryRequest(httpConfig) {
+        console.log('Retrying request with config =', httpConfig);
+        var $timeout = $injector.get('$timeout');
+        return $timeout(function() {
+          var $http = $injector.get('$http');
+          return $http(httpConfig);
+        }, waitBetweenRetries);
+      }
+
+      function gotoLoginPage() {
+        // Send in the current location for a post login redirect
+        // -- the "return" param.
+        // Do this as a relative path change since we don't know what
+        // the base/root path will be, we do know banana will always be
+        // served by the proxy at $root/banana/ - login is 1 level up.
+        var query = window.location.search,
+          hash = window.location.hash,
+          goto = '../login?return=' + window.location.pathname;
+        goto += (hash ? hash : "");
+        goto += (query ? "?" + encodeURIComponent(query) : "");
+        goto = goto.replace(/#/g, '%23');
+        window.location = goto;
+        // return;
+      }
+
+      return function(p){
+        return p.then(
+          angular.identity,
+          function(err) {
+            console.error('http error occurred! err =', err);
+            if (err.status === 401 && config.enable_retries === true && retries < maxRetries) {
+              retries++;
+              console.log('Retrying request #' + retries);
+              return retryRequest(err.config);
+            } else if (err.status === 401) {
+              console.log('http 401 encounter! Redirecting to /login page');
+              deferred.resolve(gotoLoginPage());
+            } else if (err.status === 404) {
+              console.log('http 404 encounter!');
+              deferred.reject(err);
+            } else {
+              deferred.reject(err);
             }
-          );
-        };
-    // }]);
+
+            retries = 0;
+            console.log('using deferred');
+            return deferred.promise;
+          }
+        );
+      };
     });
   }]);
   

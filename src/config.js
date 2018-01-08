@@ -57,6 +57,12 @@ function (Settings) {
     //
     // banana_server: "http://localhost:8983/solr/",
 
+    // Specify the number of requests to retry (when encounter 401 error) before redirecting to a login page,
+    // and the number of milliseconds between retries.
+    enable_retries: true,
+    max_retries: 100,
+    wait_between_retries: 1000,
+
     /**
      * Lucidworks Fusion settings
      *
