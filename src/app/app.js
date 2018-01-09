@@ -89,6 +89,7 @@ function (angular, $, _, appLevelRequire, config) {
   app.config(['$httpProvider', function($httpProvider) {
     $httpProvider.defaults.useXDomain = true;
     delete $httpProvider.defaults.headers.common["X-Requested-With"];
+
     // If the backend (apollo) gives us a 401, redirect to the login page.
     $httpProvider.responseInterceptors.push(function($q, $injector) {
       var retries = 0;
@@ -105,18 +106,27 @@ function (angular, $, _, appLevelRequire, config) {
         }, waitBetweenRetries);
       }
 
-      function gotoLoginPage() {
-        // Send in the current location for a post login redirect
-        // -- the "return" param.
-        // Do this as a relative path change since we don't know what
-        // the base/root path will be, we do know banana will always be
-        // served by the proxy at $root/banana/ - login is 1 level up.
-        var query = window.location.search,
-          hash = window.location.hash,
+      function gotoLoginPage(loginUrl) {
+        var goto;
+
+        if (loginUrl) {
+          goto = loginUrl;
+        } else {
+          // Redirect to Fusion login page.
+          //
+          // Send in the current location for a post login redirect
+          // -- the "return" param.
+          // Do this as a relative path change since we don't know what
+          // the base/root path will be, we do know banana will always be
+          // served by the proxy at $root/banana/ - login is 1 level up.
+          var query = window.location.search;
+          var hash = window.location.hash;
           goto = '../login?return=' + window.location.pathname;
-        goto += (hash ? hash : "");
-        goto += (query ? "?" + encodeURIComponent(query) : "");
-        goto = goto.replace(/#/g, '%23');
+          goto += (hash ? hash : "");
+          goto += (query ? "?" + encodeURIComponent(query) : "");
+          goto = goto.replace(/#/g, '%23');
+        }
+
         window.location = goto;
         // return;
       }
@@ -126,22 +136,31 @@ function (angular, $, _, appLevelRequire, config) {
           angular.identity,
           function(err) {
             console.error('http error occurred! err =', err);
-            if (err.status === 401 && config.enable_retries === true && retries < maxRetries) {
-              retries++;
-              console.log('Retrying request #' + retries);
-              return retryRequest(err.config);
-            } else if (err.status === 401) {
-              console.log('http 401 encounter! Redirecting to /login page');
-              deferred.resolve(gotoLoginPage());
+
+            if (err.status === 401) {
+              if (config.enable_retries === true && retries < maxRetries) {
+                retries++;
+                console.log('Retrying request #' + retries);
+                return retryRequest(err.config);
+              } else {
+                console.log('Maximum retries reached.');
+                if (config.enable_login_page) {
+                  console.error('http 401 encounter! Redirecting to login page');
+                  config.login_page_url ? deferred.resolve(gotoLoginPage(config.login_page_url)) : deferred.resolve(gotoLoginPage());
+                } else {
+                  // Login page is disabled, do not redirect and just show unauthorized error.
+                  console.error('http 401 encounter! Unauthorized access');
+                  deferred.reject(err);
+                }
+              }
             } else if (err.status === 404) {
-              console.log('http 404 encounter!');
+              console.error('http 404 encounter!');
               deferred.reject(err);
             } else {
               deferred.reject(err);
             }
 
             retries = 0;
-            console.log('using deferred');
             return deferred.promise;
           }
         );

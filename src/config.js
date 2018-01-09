@@ -55,10 +55,15 @@ function (Settings) {
     banana_queryPipeline: "system_banana-default",
     banana_indexPipeline: "system_banana-default",
 
+    // Specify whether or not to enable the login page redirection when encounter 401 error.
+    // If enable_login_page = true and login_page_url = '', then Banana will redirect to Fusion login page.
+    enable_login_page: true,
+    login_page_url: '',
+
     // Specify the number of requests to retry (when encounter 401 error) before redirecting to a login page,
     // and the number of milliseconds between retries.
-    enable_retries: true,
-    max_retries: 100,
+    enable_retries: false,
+    max_retries: 10,
     wait_between_retries: 1000,
 
     /**
