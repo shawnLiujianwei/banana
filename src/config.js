@@ -59,6 +59,7 @@ function (Settings) {
 
     // Specify whether or not to enable the login page redirection when encounter 401 error.
     // If enable_login_page = true and login_page_url = '', then Banana will redirect to Fusion login page.
+    // You can specify your own URL to the login page.
     enable_login_page: true,
     login_page_url: '',
 
