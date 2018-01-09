@@ -20,6 +20,11 @@ function (_) {
       // uncomment the following line to specify the URL of banana-int
       // banana_server: "http://localhost:8983/solr/",
 
+      // Specify whether or not to enable the login page redirection when encounter 401 error.
+      // If enable_login_page = true and login_page_url = '', then Banana will redirect to Fusion login page.
+      enable_login_page: true,
+      login_page_url: '',
+
       // Specify the number of requests to retry (when encounter 401 error) before redirecting to a login page,
       // and the number of milliseconds between retries.
       enable_retries: false,
