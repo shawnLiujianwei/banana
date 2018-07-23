@@ -1,0 +1,12 @@
+version: '2'
+services:
+  solr-banana:
+    build: .
+    image: local-dtr.zhuihuiya.com/chemical/solr-banana
+    environment:
+      API_HOST: "192.168.3.89"
+      API_PORT: 8986
+    privileged: true
+    ports:
+      - 8980:80
+    container_name: solr_banana
